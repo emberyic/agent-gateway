@@ -1,4 +1,4 @@
-module github.com/emberyic/my_gateway
+module github.com/emberyic/agent-gateway
 
 go 1.25.6
 
