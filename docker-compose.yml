@@ -3,31 +3,38 @@ services:
     build: .
     container_name: my-gateway
     ports:
-      - "8080:8080"  # 网关对外端口
+      - "8080:8080" # 网关对外端口
     environment:
-      - GATEWAY_LOG_LEVEL=info
-      - BACKEND_URL=http://backend-go:8081 
+      # 容器里用哪份配置（gateway.docker.yml 里的后端地址是容器网络内的名字）
+      - GATEWAY_CONFIG=/app/configs/gateway.docker.yml
+      - GATEWAY_LOG_FORMAT=json
+    # 关键参数也可以直接用环境变量覆盖，不用改配置、不用重新构建镜像
+    extra_hosts:
+      # 让容器能用 host.docker.internal 访问宿主机上的 FastAPI Agent 后端（:8000）
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - backend-go
     restart: unless-stopped
     networks:
       - gateway-network
 
+  # 演示用的业务后端（对应配置里的 /api 路由）
   backend-go:
     image: mendhak/http-https-echo:latest
     container_name: backend-go
     environment:
       - HTTP_PORT=8081
-      - BACKEND_URL=http://backend-go:8081
     ports:
       - "8081:8081"
     networks:
       - gateway-network
 
-  # Redis (用于分布式限流扩展)
+  # 当前限流是单机内存令牌桶，用不到 Redis
   redis:
     image: redis:7-alpine
     container_name: redis
     ports:
-    - "6380:6379"
+      - "6380:6379"
     command: redis-server --appendonly yes
     networks:
       - gateway-network

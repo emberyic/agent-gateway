@@ -1,6 +1,8 @@
 #编译产物
 /gateway
+bin/
 *.exe
+*.test
 *.exe~
 *.dll
 *.so
@@ -15,3 +17,14 @@
 *.log
 *.tmp
 .DS_Store
+
+# 密钥与本地数据都不进仓库
+.env
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/

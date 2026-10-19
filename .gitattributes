@@ -1,0 +1,8 @@
+# 仓库内按文本处理、统一存 LF
+* text=auto
+
+# 下面两个在工作区也强制 LF：
+# Dockerfile 在 Linux 容器里构建，行尾带 CR 会让 RUN 直接报错
+Dockerfile text eol=lf
+# shell 脚本要在 bash 下跑，CRLF 会导致 bad interpreter
+*.sh text eol=lf
