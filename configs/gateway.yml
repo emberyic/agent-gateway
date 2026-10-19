@@ -1,5 +1,58 @@
+# my_gateway 配置
+
+listen: "0.0.0.0:8080"
+
+# 只有确实部署在可信反向代理（nginx 等）之后才打开
+trust_proxy: false
+
+# 按客户端 IP 的令牌桶：每秒补 rps 个令牌，最多攒 burst 个
+rate_limit:
+  rps: 50
+  burst: 100
+
+# 同时在跑的流式（SSE）请求上限，超了返回 429 + Retry-After
+max_concurrent_streams: 64
+
+# 等后端开始回响应头的上限。只约束首字节之前，不约束响应体传多久，
+# 所以流式接口可以放心用（旧实现用的是「整个请求 30s」的总超时，会切断 SSE）
+backend_response_header_timeout: 60s
+
+read_header_timeout: 10s
+idle_timeout: 120s
+shutdown_timeout: 15s
+
+# /readyz（就绪探针）里对上游（Agent 后端）的探测：后端挂了，网关 /readyz 返回 503
+health:
+  upstream_url: http://127.0.0.1:8000/healthz
+  timeout: 2s
+  # 探测结果缓存 1s：就绪探针不参与限流，没有缓存时高频探针会把压力放大到后端。0 = 不缓存
+  cache_ttl: 1s
+  required: true # 只想看状态、不想影响编排时改成 false
+
+log_level: info    # debug / info / warn / error
+log_format: text   # text（人读）或 json（机器读）
+
 routes:
-  - path: "/api"
-    backend: "http://localhost:8081"
-  - path: "/web"
-    backend: "http://localhost:8082"
+  # Agent 后端（agent/）的 SSE 对话接口
+  - path: /chat/stream
+    backend: http://127.0.0.1:8000
+    streaming: true
+
+  # 同一个 FastAPI 应用的静态资源
+  - path: /static
+    backend: http://127.0.0.1:8000
+
+  # 运维路径：把 Agent 后端自己的端点也暴露在网关入口上
+  - path: /agent
+    backend: http://127.0.0.1:8000
+    strip_prefix: true
+
+  # 演示用的业务后端（test_backend.go，:8081）
+  - path: /api
+    backend: http://127.0.0.1:8081
+    timeout: 30s
+
+  # 兜底：其余请求（含 FastAPI 的 / 首页）都转发到 Agent 后端
+  - path: /
+    backend: http://127.0.0.1:8000
+    timeout: 60s

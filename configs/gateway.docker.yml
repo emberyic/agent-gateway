@@ -1,0 +1,44 @@
+# Docker Compose 用的配置：后端地址换成了容器网络内的名字
+
+listen: "0.0.0.0:8080"
+trust_proxy: false
+
+rate_limit:
+  rps: 50
+  burst: 100
+
+max_concurrent_streams: 64
+
+backend_response_header_timeout: 60s
+read_header_timeout: 10s
+idle_timeout: 120s
+shutdown_timeout: 15s
+
+health:
+  upstream_url: http://host.docker.internal:8000/healthz
+  timeout: 2s
+  cache_ttl: 1s
+  required: true
+
+log_level: info
+log_format: json
+
+routes:
+  - path: /chat/stream
+    backend: http://host.docker.internal:8000
+    streaming: true
+
+  - path: /static
+    backend: http://host.docker.internal:8000
+
+  - path: /agent
+    backend: http://host.docker.internal:8000
+    strip_prefix: true
+
+  - path: /api
+    backend: http://backend-go:8081
+    timeout: 30s
+
+  - path: /
+    backend: http://host.docker.internal:8000
+    timeout: 60s

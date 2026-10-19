@@ -1,0 +1,47 @@
+# 本地联调专用配置：只用 test_backend.go（:8081）就能验证网关的流式透传、限流与并发闸
+
+listen: "0.0.0.0:8080"
+trust_proxy: false
+
+# 故意配得很小，方便观察限流（连发几个请求就能看到 429）
+rate_limit:
+  rps: 5
+  burst: 3
+
+# 故意配成 2：开两个 /chat/slow 就能看到第三个被 429 挡下来
+max_concurrent_streams: 2
+
+backend_response_header_timeout: 10s
+read_header_timeout: 10s
+idle_timeout: 60s
+shutdown_timeout: 5s
+
+# test_backend.go 也提供了 /healthz，用来验证网关的就绪探针聚合（/readyz）
+health:
+  upstream_url: http://127.0.0.1:8081/healthz
+  timeout: 2s
+  cache_ttl: 1s
+  required: true
+
+log_level: info
+log_format: text
+
+routes:
+  # SSE：5 帧、每帧间隔 300ms。如果网关有缓冲，客户端会一次性收到全部帧
+  - path: /chat/stream
+    backend: http://127.0.0.1:8081
+    streaming: true
+
+  # 慢速 SSE（每帧 1s，共 10 帧）：用来验证并发闸
+  - path: /chat/slow
+    backend: http://127.0.0.1:8081
+    streaming: true
+
+  # 普通接口：给 wrk 压测
+  - path: /api
+    backend: http://127.0.0.1:8081
+    timeout: 30s
+
+  - path: /
+    backend: http://127.0.0.1:8081
+    timeout: 30s
