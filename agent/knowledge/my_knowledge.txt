@@ -1,0 +1,6 @@
+小a是计算机专业大二学生。
+熟悉 Java 后端开发，掌握 JVM 基础、并发编程。
+基于 Netty 实现过简易高性能网关，支持请求转发、黑名单限流、token 鉴权。
+基于 SpringBoot + SpringCloud 搭建分布式电商项目，使用 Redis 做缓存、Kafka 异步解耦、MySQL 存储业务数据。
+正在寻找 Java 后端开发实习岗位。
+他最讨厌的 bug 是“指针过期”和“测试假阳性”。

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>小鲸鱼 的聊天室</title>
+    <!-- 引入 Markdown 渲染库 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; }
+        #chat { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: scroll; margin-bottom: 10px; }
+        .message { margin-bottom: 15px; }
+        .role { font-weight: bold; color: #007bff; }
+        .content { margin-top: 5px; }
+        .content strong { font-weight: bold; color: #d9534f; }
+    </style>
+</head>
+<body>
+    <h1>小鲸鱼（硬核助手版）</h1>
+    <div id="chat"></div>
+    <input type="text" id="question" placeholder="输入你的问题..." style="width: 80%;">
+    <button onclick="send()">发送</button>
+
+    <script>
+        // 每个浏览器一个稳定的会话 ID：首次访问生成并写入 localStorage，之后每次请求都复用它
+        // 它同时就是后端的 thread_id。换掉它，后端就是另一段记忆
+        const SESSION_KEY = 'agent_session_id';
+        let cachedSessionId = null;
+
+        function newSessionId() {
+            // 优先 crypto.randomUUID：需要安全上下文（https 或 localhost）
+            if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+                return window.crypto.randomUUID();
+            }
+            // 降级 1：有安全随机数就拼成 32 位十六进制
+            if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+                const bytes = window.crypto.getRandomValues(new Uint8Array(16));
+                return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+            }
+            // 降级 2：老浏览器，时间戳 + 随机数
+            return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+        }
+
+        function getSessionId() {
+            if (cachedSessionId) return cachedSessionId;
+            let id = null;
+            try {
+                id = localStorage.getItem(SESSION_KEY);
+            } catch (e) {
+                // 隐私模式等场景 localStorage 会抛异常，按「没有」处理
+                id = null;
+            }
+            if (!id) {
+                // 首次访问，或用户清了浏览器缓存
+                id = newSessionId();
+                try {
+                    localStorage.setItem(SESSION_KEY, id);
+                } catch (e) {
+                    // 存不进去就只在本次页面生命周期里用
+                }
+            }
+            cachedSessionId = id;
+            return id;
+        }
+
+        let currentContentDiv = null;
+        let fullText = "";
+
+        async function send() {
+            const question = document.getElementById('question').value;
+            if (!question) return;
+            
+            addMessage('你', question);
+            document.getElementById('question').value = '';
+
+            // 创建气泡，用于承载流式输出
+            currentContentDiv = addMessage('小鲸鱼', '');
+            fullText = ""; // 每次发送重置内容
+
+            // 发起 SSE 请求（session_id 由本浏览器生成并持久化，不同用户互不串台）
+            const url = `/chat/stream?question=${encodeURIComponent(question)}&session_id=${encodeURIComponent(getSessionId())}`;
+            const eventSource = new EventSource(url);
+
+            eventSource.onmessage = (event) => {
+                // 收到 data 块
+                fullText += event.data;
+                // 实时渲染 Markdown，整段更新
+                currentContentDiv.innerHTML = marked.parse(fullText);
+                // 滚动到底部
+                document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
+            };
+
+            eventSource.onerror = () => {
+                eventSource.close();
+            };
+        }
+
+        function addMessage(role, text) {
+            const chat = document.getElementById('chat');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message';
+            msgDiv.innerHTML = `<div class="role">${role}:</div><div class="content">${text}</div>`;
+            chat.appendChild(msgDiv);
+            chat.scrollTop = chat.scrollHeight;
+            return msgDiv.querySelector('.content');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+# Agent 后端依赖。行尾注释是本次实测通过的版本（Windows / Python 3.13）。
+# 安装：python -m pip install -r requirements.txt
+
+# —— Web 外壳 ——
+fastapi>=0.141          # 0.141.1
+uvicorn>=0.54           # 0.54.0
+python-dotenv>=1.2      # 1.2.3
+httpx>=0.28             # 0.28.1（天气工具 + 健康探测）
+aiosqlite>=0.22         # 0.22.1（AsyncSqliteSaver 的驱动）
+
+# —— LangChain / LangGraph ——
+langchain>=1.4          # 1.4.2（create_agent + middleware）
+langchain-core>=1.6     # 1.6.5
+langchain-openai>=1.6   # 1.6.6（DeepSeek 走 OpenAI 兼容协议）
+langchain-community>=0.4        # 0.4.2（TextLoader）
+langchain-text-splitters>=1.1   # 1.1.2
+langchain-chroma>=1.1           # 1.1.0（向量库）
+langchain-huggingface>=1.2      # 1.2.2（本地 embedding）
+langgraph>=1.2                  # 1.2.12
+langgraph-checkpoint-sqlite>=3.1  # 3.1.1（多轮记忆）
+
+# —— 本地 embedding ——
+# BAAI/bge-small-zh-v1.5；会连带安装 torch（体积较大，首次装慢）
+sentence-transformers>=6.1      # 6.1.0
